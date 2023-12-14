@@ -82,6 +82,9 @@ namespace GTFO_VR.Core.PlayerBehaviours
             PlayerLocomotionEvents.OnPlayerEnterLadder += PlayerEnteredLadder;
             SteamVR_Events.NewPosesApplied.Listen(new Action(OnNewPoses));
 
+            PlayerFart fart = gameObject.AddComponent<PlayerFart>();
+            fart.Setup();
+
             RefreshClusteredRenderingResolution();
         }
 

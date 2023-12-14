@@ -96,6 +96,8 @@ namespace GTFO_VR.Core
             ClassInjector.RegisterTypeInIl2Cpp<TerminalReader>();
 
             ClassInjector.RegisterTypeInIl2Cpp<GTFODebugDraw3D>();
+
+            ClassInjector.RegisterTypeInIl2Cpp<PlayerFart>();
         }
 
         private bool SteamVRRunningCheck()
