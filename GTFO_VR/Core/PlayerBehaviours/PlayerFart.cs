@@ -2,27 +2,30 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using Bhaptics.SDK2;
-using GTFO_VR.Core.VR_Input;
 using GTFO_VR.Events;
+using Il2CppInterop.Runtime;
 using Player;
 using SteamVR_Standalone_IL2CPP.Util;
 using UnityEngine;
-using UnityEngine.Networking;
-using static System.Net.Mime.MediaTypeNames;
+using Valve.VR;
 using Application = UnityEngine.Application;
+using Object = UnityEngine.Object;
 
 namespace GTFO_VR.Core.PlayerBehaviours
 {
     public class PlayerFart : MonoBehaviour
     {
-        public AudioSource audioSource;
-        private bool m_lastIsCrouchedPhysically; 
-        public List<AudioClip> clips;
-        public int crouchCount = 0;
+        public List<AudioClip> clips; 
+        private float fartTimer = 0;
+        private float initialMinTimeForNextFart = 5;
+        private float fartDelay = 1;
+        private bool initialDelay = true;
         public int fartCount = 0;
+        public bool canFart = false;
         private PlayerLocomotion.PLOC_State m_lastLocState;
+        private PlayerChatManager m_chatManager;
+
+        private SteamVR_Action_Boolean m_crouch;
 
         public PlayerFart(IntPtr value) : base(value)
         {
@@ -31,13 +34,37 @@ namespace GTFO_VR.Core.PlayerBehaviours
         private void Awake()
         {
             PlayerLocomotionEvents.OnStateChange += OnPlayerJumpFarted;
+            ChatMsgEvents.OnChatMsgReceived += ChatMsgReceived;
+        }
+        private void FixedUpdate()
+        {
+            // fart timer
+            float delay = initialDelay ? initialMinTimeForNextFart : fartDelay;
+            if (fartTimer >= delay)
+            {
+                canFart = true;
+                initialDelay = false;
+                fartTimer = 0;
+            }
+            else
+            {
+                fartTimer += Time.deltaTime;
+            }
+
+            //chat manager
+            if (!m_chatManager)
+            {
+                m_chatManager = PlayerChatManager.Current;
+            }
         }
 
         public void Setup()
         {
             clips = new List<AudioClip>();
-            audioSource = gameObject.AddComponent<AudioSource>();
             GetClipsFromFolder();
+            m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
+            m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
+            
         }
 
         private void GetClipsFromFolder()
@@ -67,40 +94,60 @@ namespace GTFO_VR.Core.PlayerBehaviours
             if ((m_lastLocState == PlayerLocomotion.PLOC_State.Fall || m_lastLocState == PlayerLocomotion.PLOC_State.Jump)
                 && (state == PlayerLocomotion.PLOC_State.Stand || state == PlayerLocomotion.PLOC_State.Crouch))
             {
-                PlayFart();
+                SendChatMessage();
             }
 
             m_lastLocState = state;
         }
-        /*
-        private void FixedUpdate()
+
+        private void OnCrouchInput(SteamVR_Action_Boolean fromAction, SteamVR_Input_Sources fromSource)
         {
-            bool isCrouchedPhysically = IsCrouchedPhysically();
-            if (m_lastIsCrouchedPhysically != isCrouchedPhysically)
+            SendChatMessage();
+        }
+
+        public void PlayFart(Vector3 position)
+        {
+            if(canFart)
             {
-                if (isCrouchedPhysically)
+                if (fartCount > (clips.Count - 1))
                 {
-                    PlayFart();
+                    fartCount = 0;
                 }
-                m_lastIsCrouchedPhysically = isCrouchedPhysically;
+                AudioClip clip = clips[fartCount];
+                float distance = Vector3.Distance(position, VRPlayer.FpsCamera.transform.position);
+                float calcVolume = 1 - 0.0275f * distance;
+                calcVolume = (calcVolume < 0.25f) ? 0.25f : calcVolume;
+                AudioSource.PlayClipAtPoint(clip, position, calcVolume);
+                //fartCount++;
+                canFart = false;
             }
         }
-        */
 
-        private bool IsCrouchedPhysically()
+        public void SendChatMessage()
         {
-            return HMD.Hmd.transform.localPosition.y + VRConfig.configFloorOffset.Value / 100f < VRConfig.configCrouchHeight.Value / 100f;
-        }
-
-        public void PlayFart()
-        {
-            if (fartCount > (clips.Count -1))
+            if (canFart)
             {
-                fartCount = 0;
+                string pos = VRPlayer.FpsCamera.transform.position.ToString();
+                string code = String.Join("_", String.Join("", pos.Split('(', ' ')).Split(','));
+                string msg = "error_frt_" + code;
+                Log.Info(msg);
+                m_chatManager.m_currentValue = msg;
+                m_chatManager.PostMessage();
             }
-            AudioClip clip = clips[fartCount];
-            audioSource.PlayOneShot(clip);
-            fartCount++;
+        }
+
+        public void ChatMsgReceived(string msg)
+        {
+            if (canFart)
+            {
+                Vector3 pos = new Vector3();
+                var parts = msg.Split("error_frt_")[1].Split("_");
+                pos.x = float.Parse(parts[0]);
+                pos.y = float.Parse(parts[1]);
+                pos.z = float.Parse(parts[2]);
+                Log.Info("MESSAGE PARTS " + pos.ToString());
+                PlayFart(pos);
+            }
         }
     }
 }
