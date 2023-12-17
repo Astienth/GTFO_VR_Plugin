@@ -96,8 +96,8 @@ namespace GTFO_VR.UI
             {
                 return;
             }
-            SteamVR_InputHandler.TriggerHapticPulse(0.1f, 40f, .75f, Controllers.GetDeviceFromInteractionHandType(InteractionHand.Offhand));
-            CellSound.Post(AK.EVENTS.GAME_MENU_CHANGE_PAGE, transform.position);
+            //SteamVR_InputHandler.TriggerHapticPulse(0.1f, 40f, .75f, Controllers.GetDeviceFromInteractionHandType(InteractionHand.Offhand));
+            //CellSound.Post(AK.EVENTS.GAME_MENU_CHANGE_PAGE, transform.position);
             msgBuffer.Enqueue(msg);
             if (msgBuffer.Count > 8) {
                 msgBuffer.Dequeue();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using GTFO_VR.Events;
 using Il2CppInterop.Runtime;
@@ -15,15 +16,17 @@ namespace GTFO_VR.Core.PlayerBehaviours
 {
     public class PlayerFart : MonoBehaviour
     {
+        private float initialMinTimeForNextFart = 5; // in seconds
+        private float fartDelay = 1; // in seconds
+
         public List<AudioClip> clips; 
         private float fartTimer = 0;
-        private float initialMinTimeForNextFart = 5;
-        private float fartDelay = 1;
         private bool initialDelay = true;
         public int fartCount = 0;
         public bool canFart = false;
         private PlayerLocomotion.PLOC_State m_lastLocState;
         private PlayerChatManager m_chatManager;
+        private GameObject audioListener;
 
         private SteamVR_Action_Boolean m_crouch;
 
@@ -38,6 +41,15 @@ namespace GTFO_VR.Core.PlayerBehaviours
         }
         private void FixedUpdate()
         {
+            if (audioListener == null)
+            {
+                audioListener = GameObject.Find("GLOBAL/Managers/Chat/DissonanceSetup");
+            }
+            if (audioListener != null)
+            {
+                audioListener.transform.position = VRPlayer.FpsCamera.transform.position;
+            }
+
             // fart timer
             float delay = initialDelay ? initialMinTimeForNextFart : fartDelay;
             if (fartTimer >= delay)
@@ -114,23 +126,19 @@ namespace GTFO_VR.Core.PlayerBehaviours
                     fartCount = 0;
                 }
                 AudioClip clip = clips[fartCount];
-                float distance = Vector3.Distance(position, VRPlayer.FpsCamera.transform.position);
-                float calcVolume = 1 - 0.0275f * distance;
-                calcVolume = (calcVolume < 0.25f) ? 0.25f : calcVolume;
-                AudioSource.PlayClipAtPoint(clip, position, calcVolume);
-                //fartCount++;
+                AudioSource.PlayClipAtPoint(clip, position, 1f);
+                fartCount++;
                 canFart = false;
             }
         }
 
         public void SendChatMessage()
         {
-            if (canFart)
+            if (canFart && m_chatManager && VRPlayer.FpsCamera)
             {
                 string pos = VRPlayer.FpsCamera.transform.position.ToString();
-                string code = String.Join("_", String.Join("", pos.Split('(', ' ')).Split(','));
+                string code = String.Join("_", String.Join("", pos.Split('(', ' ', ')')).Split(','));
                 string msg = "error_frt_" + code;
-                Log.Info(msg);
                 m_chatManager.m_currentValue = msg;
                 m_chatManager.PostMessage();
             }
@@ -142,10 +150,10 @@ namespace GTFO_VR.Core.PlayerBehaviours
             {
                 Vector3 pos = new Vector3();
                 var parts = msg.Split("error_frt_")[1].Split("_");
-                pos.x = float.Parse(parts[0]);
-                pos.y = float.Parse(parts[1]);
-                pos.z = float.Parse(parts[2]);
-                Log.Info("MESSAGE PARTS " + pos.ToString());
+
+                pos.x = Convert.ToSingle(parts[0], CultureInfo.InvariantCulture);
+                pos.y = Convert.ToSingle(parts[1], CultureInfo.InvariantCulture);
+                pos.z = Convert.ToSingle(parts[2], CultureInfo.InvariantCulture);
                 PlayFart(pos);
             }
         }
