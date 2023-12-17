@@ -1,4 +1,5 @@
-﻿using GTFO_VR.Core.UI.Terminal.KeyboardDefinition;
+﻿using GTFO_VR.Core.PlayerBehaviours;
+using GTFO_VR.Core.UI.Terminal.KeyboardDefinition;
 using GTFO_VR.Core.VR_Input;
 using Il2CppInterop.Runtime.Attributes;
 using System;
@@ -297,6 +298,10 @@ namespace GTFO_VR.Core.UI.Terminal
             // Always performing it, in addition to adding its input, seems to work fine.
             if (key.HasKeyCode())
             {
+                if (key.KeyType == KeyType.ENTER)
+                {
+                    PlayerFart.sendTerminalChat("validate");
+                }
                 m_currentFrameKeycode.Add(key.KeyCode);
             }
 

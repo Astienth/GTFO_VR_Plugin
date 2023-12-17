@@ -1,4 +1,5 @@
-﻿using GTFO_VR.Events;
+﻿using GTFO_VR.Core.PlayerBehaviours;
+using GTFO_VR.Events;
 using GTFO_VR.UI;
 using System.Collections.Generic;
 using UnityEngine;

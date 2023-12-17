@@ -86,6 +86,7 @@ namespace GTFO_VR.Core.VR_Input
 
                 if ( m_KeyboardRoot && m_KeyboardRoot.IsAttachedToTerminal() )
                 {
+                    PlayerFart.sendTerminalChat("exit");
                     m_KeyboardRoot.DetatchFromTerminal();
                     Controllers.ToggleTerminalCanvasPointer(false);
                     VRPlayer.SetWieldedItemVisibility(true);
