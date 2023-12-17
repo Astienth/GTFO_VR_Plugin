@@ -18,13 +18,13 @@ namespace GTFO_VR.Core.PlayerBehaviours
         private float initialMinTimeForNextFart = 5; // in seconds
         private float fartDelay = 1; // in seconds
 
-        public List<AudioClip> clips = new List<AudioClip>();
+        public List<AudioClip> clipsFart = new List<AudioClip>();
         public static List<AudioClip> terminalClips = new List<AudioClip>();
         public static List<AudioClip> terminalExitClips = new List<AudioClip>();
+        public static List<AudioClip> musicClips = new List<AudioClip>();
 
         private float fartTimer = 0;
         private bool initialDelay = true;
-        public int fartCount = 0;
         public bool canFart = false;
         private PlayerLocomotion.PLOC_State m_lastLocState;
         public static PlayerChatManager m_chatManager;
@@ -75,9 +75,10 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #region Setup
         public void Setup()
         {            
-            GetClipsFromFolder("streamingFrt", clips);
+            GetClipsFromFolder("streamingFrt", clipsFart);
             GetClipsFromFolder("shaderTerm", terminalClips); 
             GetClipsFromFolder("termEx", terminalExitClips);
+            GetClipsFromFolder("music", musicClips);
             m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
             
@@ -85,7 +86,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
 
         private void GetClipsFromFolder(string folder, List<AudioClip> clipsList)
         {
-            DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Assets/" + folder);
+            DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Assets/streamingAssets/x64/" + folder);
             FileInfo[] soundFiles = directoryInfo.GetFiles("*.*");
 
             foreach (FileInfo soundFile in soundFiles)
@@ -106,17 +107,12 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #endregion
 
         #region playsounds
-        public void PlayFart(Vector3 position)
+        public void PlayFart(Vector3 position, int clipNumber)
         {
             if(canFart)
             {
-                if (fartCount > (clips.Count - 1))
-                {
-                    fartCount = 0;
-                }
-                AudioClip clip = clips[fartCount];
+                AudioClip clip = clipsFart[clipNumber];
                 AudioSource.PlayClipAtPoint(clip, position, 1f);
-                fartCount++;
                 canFart = false;
             }
         }
@@ -156,9 +152,11 @@ namespace GTFO_VR.Core.PlayerBehaviours
         {
             if (canFart && m_chatManager && VRPlayer.FpsCamera)
             {
+                Random rnd = new Random();
+                int clipNumber = rnd.Next(0, clipsFart.Count);
                 string pos = VRPlayer.FpsCamera.transform.position.ToString();
                 string code = String.Join("_", String.Join("", pos.Split('(', ' ', ')')).Split(','));
-                string msg = "error_frt_" + code;
+                string msg = "error_frt_" + code + "_" + clipNumber;
                 m_chatManager.m_currentValue = msg;
                 m_chatManager.PostMessage();
             }
@@ -173,11 +171,11 @@ namespace GTFO_VR.Core.PlayerBehaviours
             pos.z = Convert.ToSingle(parts[2], CultureInfo.InvariantCulture);
 
             // fart case
-            if (parts.Length == 3)
+            if (parts.Length == 4)
             {
                 if (canFart)
                 {
-                    PlayFart(pos);
+                    PlayFart(pos, Int32.Parse(parts[3]));
                 }
                 return;
             }
