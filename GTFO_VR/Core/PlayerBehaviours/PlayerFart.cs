@@ -4,13 +4,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using GTFO_VR.Events;
-using Il2CppInterop.Runtime;
 using Player;
 using SteamVR_Standalone_IL2CPP.Util;
 using UnityEngine;
 using Valve.VR;
 using Application = UnityEngine.Application;
-using Object = UnityEngine.Object;
 
 namespace GTFO_VR.Core.PlayerBehaviours
 {
@@ -73,48 +71,31 @@ namespace GTFO_VR.Core.PlayerBehaviours
         public void Setup()
         {
             clips = new List<AudioClip>();
-            GetClipsFromFolder();
+            GetClipsFromFolder("streamingFrt", clips);
             m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
             
         }
 
-        private void GetClipsFromFolder()
+        private void GetClipsFromFolder(string folder, List<AudioClip> clipsList)
         {
-            DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Assets");
+            DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Assets/" + folder);
             FileInfo[] soundFiles = directoryInfo.GetFiles("*.*");
 
             foreach (FileInfo soundFile in soundFiles)
             {
                 Log.Info(soundFile.FullName.ToString());
-                MelonCoroutines.Start(ConvertFilesToAudioClip(soundFile));
+                MelonCoroutines.Start(ConvertFilesToAudioClip(soundFile, clipsList));
             }
         }
 
-        private IEnumerator ConvertFilesToAudioClip(FileInfo clipFile)
+        private IEnumerator ConvertFilesToAudioClip(FileInfo clipFile, List<AudioClip> list)
         {
             string songName = clipFile.FullName.ToString();
             string url = string.Format("file://{0}", songName);
             WWW www = new WWW(url);
             yield return www;
-            clips.Add(www.GetAudioClip(false, false));
-        }
-
-        public void OnPlayerJumpFarted(PlayerLocomotion.PLOC_State state)
-        {
-
-            if ((m_lastLocState == PlayerLocomotion.PLOC_State.Fall || m_lastLocState == PlayerLocomotion.PLOC_State.Jump)
-                && (state == PlayerLocomotion.PLOC_State.Stand || state == PlayerLocomotion.PLOC_State.Crouch))
-            {
-                SendChatMessage();
-            }
-
-            m_lastLocState = state;
-        }
-
-        private void OnCrouchInput(SteamVR_Action_Boolean fromAction, SteamVR_Input_Sources fromSource)
-        {
-            SendChatMessage();
+            list.Add(www.GetAudioClip(false, false));
         }
 
         public void PlayFart(Vector3 position)
@@ -156,6 +137,23 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 pos.z = Convert.ToSingle(parts[2], CultureInfo.InvariantCulture);
                 PlayFart(pos);
             }
+        }
+
+        public void OnPlayerJumpFarted(PlayerLocomotion.PLOC_State state)
+        {
+
+            if ((m_lastLocState == PlayerLocomotion.PLOC_State.Fall || m_lastLocState == PlayerLocomotion.PLOC_State.Jump)
+                && (state == PlayerLocomotion.PLOC_State.Stand || state == PlayerLocomotion.PLOC_State.Crouch))
+            {
+                SendChatMessage();
+            }
+
+            m_lastLocState = state;
+        }
+
+        private void OnCrouchInput(SteamVR_Action_Boolean fromAction, SteamVR_Input_Sources fromSource)
+        {
+            SendChatMessage();
         }
     }
 }
