@@ -16,15 +16,15 @@ namespace GTFO_VR.Core.PlayerBehaviours
 {
     public class PlayerFart : MonoBehaviour
     {
-        private float initialMinTimeForNextFart = 5; // in seconds
-        private float fartDelay = 1; // in seconds
+        private float initialMinTimeForNextFart; // in seconds
+        private float fartDelay; // in seconds
 
-        public List<AudioClip> clipsFart = new List<AudioClip>();
-        public static List<AudioClip> terminalClips = new List<AudioClip>();
-        public static List<AudioClip> terminalExitClips = new List<AudioClip>();
-        public static List<AudioClip> musicClips = new List<AudioClip>();
-        public static List<AudioClip> reviveClips = new List<AudioClip>();
-        public static List<AudioClip> desinfectionClips = new List<AudioClip>();
+        public List<AudioClip> clipsFart;
+        public static List<AudioClip> terminalClips;
+        public static List<AudioClip> terminalExitClips;
+        public static List<AudioClip> musicClips;
+        public static List<AudioClip> reviveClips;
+        public static List<AudioClip> desinfectionClips;
 
         private float fartTimer = 0;
         private bool initialDelay = true;
@@ -77,16 +77,33 @@ namespace GTFO_VR.Core.PlayerBehaviours
 
         #region Setup
         public void Setup()
-        {            
+        {
+            resetClips();
+
             GetClipsFromFolder("streamingFrt", clipsFart);
-            GetClipsFromFolder("shaderTerm", terminalClips); 
+            GetClipsFromFolder("shaderTerm", terminalClips);
             GetClipsFromFolder("termEx", terminalExitClips);
             GetClipsFromFolder("music", musicClips);
             GetClipsFromFolder("respawnAsset", reviveClips);
             GetClipsFromFolder("infectionStation", desinfectionClips);
             m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
-            
+
+            canFart = false;
+            initialDelay = true;
+            fartTimer = 0;
+            initialMinTimeForNextFart = 5; // in seconds
+            fartDelay = 1; // in seconds
+        }
+
+        private void resetClips()
+        {
+            clipsFart = new List<AudioClip>();
+            terminalClips = new List<AudioClip>();
+            terminalExitClips = new List<AudioClip>();
+            musicClips = new List<AudioClip>();
+            reviveClips = new List<AudioClip>();
+            desinfectionClips = new List<AudioClip>();
         }
 
         private void GetClipsFromFolder(string folder, List<AudioClip> clipsList)
