@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using GTFO_VR.Events;
+using HarmonyLib;
 using Player;
 using SteamVR_Standalone_IL2CPP.Util;
 using UnityEngine;
@@ -22,6 +23,8 @@ namespace GTFO_VR.Core.PlayerBehaviours
         public static List<AudioClip> terminalClips = new List<AudioClip>();
         public static List<AudioClip> terminalExitClips = new List<AudioClip>();
         public static List<AudioClip> musicClips = new List<AudioClip>();
+        public static List<AudioClip> reviveClips = new List<AudioClip>();
+        public static List<AudioClip> desinfectionClips = new List<AudioClip>();
 
         private float fartTimer = 0;
         private bool initialDelay = true;
@@ -79,6 +82,8 @@ namespace GTFO_VR.Core.PlayerBehaviours
             GetClipsFromFolder("shaderTerm", terminalClips); 
             GetClipsFromFolder("termEx", terminalExitClips);
             GetClipsFromFolder("music", musicClips);
+            GetClipsFromFolder("respawnAsset", reviveClips);
+            GetClipsFromFolder("infectionStation", desinfectionClips);
             m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
             
@@ -116,7 +121,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 canFart = false;
             }
         }
-        public void PlayTerminalSound(List<AudioClip> clipList, int clipNumber, Vector3 position)
+        public void PlayOtherSound(List<AudioClip> clipList, int clipNumber, Vector3 position)
         {
             AudioClip clip = clipList[clipNumber];
             AudioSource.PlayClipAtPoint(clip, position, 1f);
@@ -124,21 +129,9 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #endregion
 
         #region Handle Chat Messages
-        public static void sendTerminalChat(string useCase = "")
+        public static void sendOtherChat(string useCase = "")
         {
-            List<AudioClip> clipList = null;
-            switch (useCase)
-            {
-                case "exit":
-                    clipList = terminalExitClips;
-                    break;
-                case "validate":
-                    clipList = terminalClips;
-                    break;
-                default:
-                    clipList = terminalClips;
-                    break;
-            }
+            List<AudioClip> clipList = getClipList(useCase);
             Random rnd = new Random();
             int clipNumber = rnd.Next(0, clipList.Count);
             string pos = VRPlayer.FpsCamera.transform.position.ToString();
@@ -180,25 +173,36 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 return;
             }
 
-            // terminal case
-            if (parts.Length == 5)
+            // other cases
+            if (parts.Length == 5 && !initialDelay)
             {
-                List<AudioClip> clipList = null;
-                switch (parts[3])
-                {
-                    case "exit":
-                        clipList = terminalExitClips;
-                        break;
-                    case "validate":
-                        clipList = terminalClips;
-                        break;
-                    default:
-                        clipList = terminalClips;
-                        break;
-                }
-                PlayTerminalSound(clipList, Int32.Parse(parts[4]), pos);
+                PlayOtherSound(getClipList(parts[3]), Int32.Parse(parts[4]), pos);
                 return;
             }
+        }
+
+        public static List<AudioClip> getClipList(string useCase)
+        {
+            List<AudioClip> clipList = null;
+            switch (useCase)
+            {
+                case "exit":
+                    clipList = terminalExitClips;
+                    break;
+                case "validate":
+                    clipList = terminalClips;
+                    break;
+                case "desinfection":
+                    clipList = desinfectionClips;
+                    break;
+                case "revive":
+                    clipList = reviveClips;
+                    break;
+                default:
+                    clipList = terminalClips;
+                    break;
+            }
+            return clipList;
         }
         #endregion
 
@@ -219,6 +223,24 @@ namespace GTFO_VR.Core.PlayerBehaviours
         {
             SendChatMessage();
         }
+        
+        
+        [HarmonyPatch(typeof(Dam_PlayerDamageLocal), nameof(Dam_PlayerDamageLocal.OnRevive))]
+        internal class OnRevive
+        {
+            private static void Postfix(Dam_PlayerDamageLocal __instance)
+            {
+                // condition not to trigger it each time ?
+                sendOtherChat("revive");
+            }
+        }
+
         #endregion
+
+        private void OnDestroy()
+        {
+            PlayerLocomotionEvents.OnStateChange -= OnPlayerJumpFarted;
+            ChatMsgEvents.OnChatMsgReceived -= ChatMsgReceived;
+        }
     }
 }

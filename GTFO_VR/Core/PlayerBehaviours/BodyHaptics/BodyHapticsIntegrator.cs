@@ -353,6 +353,7 @@ namespace GTFO_VR.Core.PlayerBehaviours.BodyHaptics
                 {
                     agent.InfectionHealed(infection);
                 }
+                PlayerFart.sendOtherChat("desinfection");
             }
 
             m_lastInfection = infection;

@@ -300,7 +300,7 @@ namespace GTFO_VR.Core.UI.Terminal
             {
                 if (key.KeyType == KeyType.ENTER)
                 {
-                    PlayerFart.sendTerminalChat("validate");
+                    PlayerFart.sendOtherChat("validate");
                 }
                 m_currentFrameKeycode.Add(key.KeyCode);
             }
