@@ -27,7 +27,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
         public static List<AudioClip> desinfectionClips;
 
         private float fartTimer = 0;
-        private bool initialDelay = true;
+        public static bool hasToWaitInitialDelay = true;
         public bool canFart = false;
         private PlayerLocomotion.PLOC_State m_lastLocState;
         public static PlayerChatManager m_chatManager;
@@ -56,11 +56,11 @@ namespace GTFO_VR.Core.PlayerBehaviours
             }
 
             // fart timer
-            float delay = initialDelay ? initialMinTimeForNextFart : fartDelay;
+            float delay = hasToWaitInitialDelay ? initialMinTimeForNextFart : fartDelay;
             if (fartTimer >= delay)
             {
                 canFart = true;
-                initialDelay = false;
+                hasToWaitInitialDelay = false;
                 fartTimer = 0;
             }
             else
@@ -90,10 +90,10 @@ namespace GTFO_VR.Core.PlayerBehaviours
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
 
             canFart = false;
-            initialDelay = true;
+            hasToWaitInitialDelay = true;
             fartTimer = 0;
-            initialMinTimeForNextFart = 5; // in seconds
-            fartDelay = 1; // in seconds
+            initialMinTimeForNextFart = 600; // in seconds
+            fartDelay = 180; // in seconds
         }
 
         private void resetClips()
@@ -113,7 +113,6 @@ namespace GTFO_VR.Core.PlayerBehaviours
 
             foreach (FileInfo soundFile in soundFiles)
             {
-                Log.Info(soundFile.FullName.ToString());
                 MelonCoroutines.Start(ConvertFilesToAudioClip(soundFile, clipsList));
             }
         }
@@ -131,12 +130,8 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #region playsounds
         public void PlayFart(Vector3 position, int clipNumber)
         {
-            if(canFart)
-            {
-                AudioClip clip = clipsFart[clipNumber];
-                AudioSource.PlayClipAtPoint(clip, position, 1f);
-                canFart = false;
-            }
+            AudioClip clip = clipsFart[clipNumber];
+            AudioSource.PlayClipAtPoint(clip, position, 1f);
         }
         public void PlayOtherSound(List<AudioClip> clipList, int clipNumber, Vector3 position)
         {
@@ -148,14 +143,17 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #region Handle Chat Messages
         public static void sendOtherChat(string useCase = "")
         {
-            List<AudioClip> clipList = getClipList(useCase);
-            Random rnd = new Random();
-            int clipNumber = rnd.Next(0, clipList.Count);
-            string pos = VRPlayer.FpsCamera.transform.position.ToString();
-            string code = String.Join("_", String.Join("", pos.Split('(', ' ', ')')).Split(','));
-            string msg = "error_frt_" + code + "_" + useCase + "_" + clipNumber;
-            m_chatManager.m_currentValue = msg;
-            m_chatManager.PostMessage();
+            if (!hasToWaitInitialDelay)
+            {
+                List<AudioClip> clipList = getClipList(useCase);
+                Random rnd = new Random();
+                int clipNumber = rnd.Next(0, clipList.Count);
+                string pos = VRPlayer.FpsCamera.transform.position.ToString();
+                string code = String.Join("_", String.Join("", pos.Split('(', ' ', ')')).Split(','));
+                string msg = "error_frt_" + code + "_" + useCase + "_" + clipNumber;
+                m_chatManager.m_currentValue = msg;
+                m_chatManager.PostMessage();
+            }
         }
 
         public void SendChatMessage()
@@ -169,6 +167,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 string msg = "error_frt_" + code + "_" + clipNumber;
                 m_chatManager.m_currentValue = msg;
                 m_chatManager.PostMessage();
+                canFart = false;
             }
         }
 
@@ -183,15 +182,12 @@ namespace GTFO_VR.Core.PlayerBehaviours
             // fart case
             if (parts.Length == 4)
             {
-                if (canFart)
-                {
-                    PlayFart(pos, Int32.Parse(parts[3]));
-                }
+                PlayFart(pos, Int32.Parse(parts[3]));
                 return;
             }
 
             // other cases
-            if (parts.Length == 5 && !initialDelay)
+            if (parts.Length == 5)
             {
                 PlayOtherSound(getClipList(parts[3]), Int32.Parse(parts[4]), pos);
                 return;
