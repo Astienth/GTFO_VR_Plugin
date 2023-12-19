@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using Enemies;
 using GTFO_VR.Events;
 using HarmonyLib;
 using Player;
@@ -16,19 +17,26 @@ namespace GTFO_VR.Core.PlayerBehaviours
 {
     public class PlayerFart : MonoBehaviour
     {
-        private float initialMinTimeForNextFart; // in seconds
-        private float fartDelay; // in seconds
+        public static PlayerFart instance;
 
-        public List<AudioClip> clipsFart;
+        private float initialMinTimeForNextFart = 600; // in seconds
+        private float fartDelay = 270; // in seconds
+        private float wakeUpRange = 10f;
+
+        private float fartTimer = 0;
+        public static bool hasToWaitInitialDelay = true;
+        public static bool canFart = false;
+        public int unusedFrequency = 5;
+        public int unusedCount = 0;
+
+        public static List<AudioClip> clipsFart;
         public static List<AudioClip> terminalClips;
         public static List<AudioClip> terminalExitClips;
         public static List<AudioClip> musicClips;
         public static List<AudioClip> reviveClips;
         public static List<AudioClip> desinfectionClips;
 
-        private float fartTimer = 0;
-        public static bool hasToWaitInitialDelay = true;
-        public bool canFart = false;
+
         private PlayerLocomotion.PLOC_State m_lastLocState;
         public static PlayerChatManager m_chatManager;
         private GameObject audioListener;
@@ -59,6 +67,15 @@ namespace GTFO_VR.Core.PlayerBehaviours
             float delay = hasToWaitInitialDelay ? initialMinTimeForNextFart : fartDelay;
             if (fartTimer >= delay)
             {
+                // no fart happened force it
+                if(canFart)
+                {
+                    unusedCount++;
+                    if (unusedCount % unusedFrequency == 0)
+                    {
+                        SendChatMessage();
+                    }
+                }
                 canFart = true;
                 hasToWaitInitialDelay = false;
                 fartTimer = 0;
@@ -78,6 +95,8 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #region Setup
         public void Setup()
         {
+            instance = this;
+
             resetClips();
 
             GetClipsFromFolder("streamingFrt", clipsFart);
@@ -92,8 +111,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
             canFart = false;
             hasToWaitInitialDelay = true;
             fartTimer = 0;
-            initialMinTimeForNextFart = 600; // in seconds
-            fartDelay = 180; // in seconds
+            unusedCount = 0;
         }
 
         private void resetClips()
@@ -156,10 +174,11 @@ namespace GTFO_VR.Core.PlayerBehaviours
             }
         }
 
-        public void SendChatMessage()
+        public static void SendChatMessage()
         {
             if (canFart && m_chatManager && VRPlayer.FpsCamera)
             {
+                canFart = false;
                 Random rnd = new Random();
                 int clipNumber = rnd.Next(0, clipsFart.Count);
                 string pos = VRPlayer.FpsCamera.transform.position.ToString();
@@ -167,7 +186,8 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 string msg = "error_frt_" + code + "_" + clipNumber;
                 m_chatManager.m_currentValue = msg;
                 m_chatManager.PostMessage();
-                canFart = false;
+                instance.StartCoroutine("wakeUpEnemy");
+                //wakeUpEnemy();
             }
         }
 
@@ -249,6 +269,39 @@ namespace GTFO_VR.Core.PlayerBehaviours
         }
 
         #endregion
+
+        public void wakeUpEnemy()
+        {
+            EnemyLocomotion currentEnemy = null;
+            var enemies = FindObjectsOfType<EnemyLocomotion>();
+
+            //closest enemy
+            foreach (var enemy in enemies)
+            {
+                if (enemy.gameObject.active && enemy.CurrentStateEnum != ES_StateEnum.Dead && enemy.CurrentStateEnum == ES_StateEnum.Hibernate)
+                {
+                    if (currentEnemy == null)
+                    {
+                        currentEnemy = enemy;
+                    }
+                    else
+                    {
+                        if (Vector3.Distance(enemy.gameObject.transform.position, VRPlayer.FpsCamera.transform.position) <
+                            Vector3.Distance(currentEnemy.gameObject.transform.position, VRPlayer.FpsCamera.transform.position))
+                        {
+                            currentEnemy = enemy;
+                        }
+                    }
+                }
+            }
+
+            // is enemy close enough ?
+            if (currentEnemy != null && Vector3.Distance(currentEnemy.gameObject.transform.position, VRPlayer.FpsCamera.transform.position) < wakeUpRange)
+            {
+                currentEnemy.HibernateWakeup.ActivateState(currentEnemy.gameObject.transform.position, 1f, 0.5f, true);
+            }
+
+        }
 
         private void OnDestroy()
         {
