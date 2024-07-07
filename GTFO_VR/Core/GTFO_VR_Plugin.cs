@@ -16,6 +16,8 @@ using GTFO_VR.Core.PlayerBehaviours.BodyHaptics.Shockwave;
 using BepInEx.Unity.IL2CPP;
 using Il2CppInterop.Runtime.Injection;
 using GTFO_VR.Util;
+using static Valve.VR.SteamVR;
+using System;
 
 namespace GTFO_VR.Core
 {
@@ -33,18 +35,35 @@ namespace GTFO_VR.Core
 
         public override void Load()
         {
-            Core.Log.Setup(BepInEx.Logging.Logger.CreateLogSource(MODNAME));
-            Core.Log.Info($"Loading VR plugin v.{VERSION}");
-
-            VRConfig.SetupConfig(Config);
-
-            if (SteamVRRunningCheck())
+            try
             {
-                InjectVR();
+                Core.Log.Setup(BepInEx.Logging.Logger.CreateLogSource(MODNAME));
+                Core.Log.Info($"Loading VR plugin v.{VERSION}");
+
+                Core.Log.Info("RELOAD MODULE");
+                //ExternalPluginFunctionExtractor.SetFindAndLoadPluginFunctionOffset(0x0792345);
+                ExternalPluginFunctionExtractor.SetFindAndLoadPluginFunctionOffset(0x0792350);
+                Core.Log.Info($"FindAndLoadUnityPluginOffset {ExternalPluginFunctionExtractor.FindAndLoadUnityPluginOffset}");
+                    //ExternalPluginFunctionExtractor.GetLoadPluginFunction();
+                Core.Log.Info("TRIED TO CHANGE OFFSET MODULE LOADING");
+
+                VRConfig.SetupConfig(Config);
+
+                if (SteamVRRunningCheck())
+                {
+                    InjectVR();
+                }
+                else
+                {
+                    Log.LogWarning("VR launch aborted, VR is disabled or SteamVR is off!");
+                }
+
             }
-            else
+            catch (Exception ex)
             {
-                Log.LogWarning("VR launch aborted, VR is disabled or SteamVR is off!");
+
+                Core.Log.Info($"ERROR {ex.Message}");
+
             }
         }
 

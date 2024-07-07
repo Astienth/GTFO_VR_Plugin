@@ -19,20 +19,15 @@ namespace GTFO_VR.Core.PlayerBehaviours
     {
         public static PlayerFart instance;
 
-        private float initialMinTimeForNextFart = 600; // in seconds
-        private float fartDelay = 270; // in seconds
+        private float fartDelay = 260; // in seconds
         private float wakeUpRange = 10f;
 
         private float fartTimer = 0;
-        public static bool hasToWaitInitialDelay = true;
         public static bool canFart = false;
-        public int unusedFrequency = 5;
-        public int unusedCount = 0;
 
         public static List<AudioClip> clipsFart;
         public static List<AudioClip> terminalClips;
         public static List<AudioClip> terminalExitClips;
-        public static List<AudioClip> musicClips;
         public static List<AudioClip> reviveClips;
         public static List<AudioClip> desinfectionClips;
 
@@ -51,6 +46,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
         {
             PlayerLocomotionEvents.OnStateChange += OnPlayerJumpFarted;
             ChatMsgEvents.OnChatMsgReceived += ChatMsgReceived;
+            MelonCoroutines.Start(RandomFart());
         }
         private void FixedUpdate()
         {
@@ -64,20 +60,9 @@ namespace GTFO_VR.Core.PlayerBehaviours
             }
 
             // fart timer
-            float delay = hasToWaitInitialDelay ? initialMinTimeForNextFart : fartDelay;
-            if (fartTimer >= delay)
+            if (fartTimer >= fartDelay)
             {
-                // no fart happened force it
-                if(canFart)
-                {
-                    unusedCount++;
-                    if (unusedCount % unusedFrequency == 0)
-                    {
-                        SendChatMessage();
-                    }
-                }
                 canFart = true;
-                hasToWaitInitialDelay = false;
                 fartTimer = 0;
             }
             else
@@ -102,16 +87,13 @@ namespace GTFO_VR.Core.PlayerBehaviours
             GetClipsFromFolder("streamingFrt", clipsFart);
             GetClipsFromFolder("shaderTerm", terminalClips);
             GetClipsFromFolder("termEx", terminalExitClips);
-            GetClipsFromFolder("music", musicClips);
             GetClipsFromFolder("respawnAsset", reviveClips);
             GetClipsFromFolder("infectionStation", desinfectionClips);
             m_crouch = SteamVR_Input.GetBooleanAction("Crouch", false);
             m_crouch.AddOnStateDownListener(OnCrouchInput, SteamVR_Input_Sources.Any);
 
             canFart = false;
-            hasToWaitInitialDelay = true;
             fartTimer = 0;
-            unusedCount = 0;
         }
 
         private void resetClips()
@@ -119,7 +101,6 @@ namespace GTFO_VR.Core.PlayerBehaviours
             clipsFart = new List<AudioClip>();
             terminalClips = new List<AudioClip>();
             terminalExitClips = new List<AudioClip>();
-            musicClips = new List<AudioClip>();
             reviveClips = new List<AudioClip>();
             desinfectionClips = new List<AudioClip>();
         }
@@ -161,7 +142,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
         #region Handle Chat Messages
         public static void sendOtherChat(string useCase = "")
         {
-            if (!hasToWaitInitialDelay)
+            if (m_chatManager && VRPlayer.FpsCamera)
             {
                 List<AudioClip> clipList = getClipList(useCase);
                 Random rnd = new Random();
@@ -174,11 +155,14 @@ namespace GTFO_VR.Core.PlayerBehaviours
             }
         }
 
-        public static void SendChatMessage()
+        public static void SendChatMessage(bool force = false)
         {
-            if (canFart && m_chatManager && VRPlayer.FpsCamera)
+            if ((canFart || force) && m_chatManager && VRPlayer.FpsCamera)
             {
-                canFart = false;
+                if (!force)
+                {
+                    canFart = false;
+                }
                 Random rnd = new Random();
                 int clipNumber = rnd.Next(0, clipsFart.Count);
                 string pos = VRPlayer.FpsCamera.transform.position.ToString();
@@ -187,7 +171,6 @@ namespace GTFO_VR.Core.PlayerBehaviours
                 m_chatManager.m_currentValue = msg;
                 m_chatManager.PostMessage();
                 instance.StartCoroutine("wakeUpEnemy");
-                //wakeUpEnemy();
             }
         }
 
@@ -264,7 +247,7 @@ namespace GTFO_VR.Core.PlayerBehaviours
             private static void Postfix(Dam_PlayerDamageLocal __instance)
             {
                 // condition not to trigger it each time ?
-                sendOtherChat("revive");
+                //sendOtherChat("revive");
             }
         }
 
@@ -303,10 +286,26 @@ namespace GTFO_VR.Core.PlayerBehaviours
 
         }
 
+        private IEnumerator RandomFart()
+        {
+            Random rnd = new Random();
+            while (true)
+            {
+                int luck = rnd.Next(1, 11);
+                if (luck == 7)
+                {
+                    SendChatMessage(true);
+                }
+                float delay = rnd.Next(6, 14) * 10;
+                yield return new WaitForSeconds(delay);
+            }
+        }
+
         private void OnDestroy()
         {
             PlayerLocomotionEvents.OnStateChange -= OnPlayerJumpFarted;
             ChatMsgEvents.OnChatMsgReceived -= ChatMsgReceived;
+            MelonCoroutines.Stop(RandomFart());
         }
     }
 }
