@@ -1,0 +1,13 @@
+ManifestFileVersion: 0
+CRC: 58828386
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: vrshaders
+      Dependencies: {}
+    Info_1:
+      Name: vrwatch
+      Dependencies: {}
+    Info_2:
+      Name: nuts
+      Dependencies: {}
